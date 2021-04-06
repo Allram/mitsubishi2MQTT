@@ -184,15 +184,11 @@ void setup() {
     hp.setSettingsChangedCallback(hpSettingsChanged);
     hp.setStatusChangedCallback(hpStatusChanged);
     hp.setPacketCallback(hpPacketDebug);
-
-    if (allowExternalUpdate) {
-      hp.enableExternalUpdate();
-    } else {
-      hp.disableExternalUpdate();
-    }
-
+    hp.enableExternalUpdate();
     hp.connect(&Serial);
     lastTempSend = millis();
+    hpSettingsChanged();
+    hpStatusChanged(hp.getStatus());
   }
   else {
     dnsServer.start(DNS_PORT, "*", apIP);
