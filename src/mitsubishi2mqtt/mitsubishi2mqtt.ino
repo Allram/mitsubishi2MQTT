@@ -157,18 +157,19 @@ void setup() {
     if (loadMqtt()) {
       //write_log("Starting MQTT");
       // setup HA topics
-      ha_power_set_topic       = mqtt_topic + "/" + mqtt_fn + "/power/set";
-      ha_mode_set_topic        = mqtt_topic + "/" + mqtt_fn + "/mode/set";
-      ha_temp_set_topic        = mqtt_topic + "/" + mqtt_fn + "/temp/set";
+      ha_power_set_topic    = mqtt_topic + "/" + mqtt_fn + "/power/set";
+      ha_mode_set_topic     = mqtt_topic + "/" + mqtt_fn + "/mode/set";
+      ha_temp_set_topic     = mqtt_topic + "/" + mqtt_fn + "/temp/set";
       ha_remote_temp_set_topic = mqtt_topic + "/" + mqtt_fn + "/remote_temp/set";
-      ha_fan_set_topic         = mqtt_topic + "/" + mqtt_fn + "/fan/set";
-      ha_vane_set_topic        = mqtt_topic + "/" + mqtt_fn + "/vane/set";
-      ha_wideVane_set_topic    = mqtt_topic + "/" + mqtt_fn + "/wideVane/set";
-      ha_settings_topic        = mqtt_topic + "/" + mqtt_fn + "/settings";
-      ha_state_topic           = mqtt_topic + "/" + mqtt_fn + "/state";
-      ha_debug_topic           = mqtt_topic + "/" + mqtt_fn + "/debug";
-      ha_debug_set_topic       = mqtt_topic + "/" + mqtt_fn + "/debug/set";
-      ha_custom_packet         = mqtt_topic + "/" + mqtt_fn + "/custom/send";
+      ha_fan_set_topic      = mqtt_topic + "/" + mqtt_fn + "/fan/set";
+      ha_vane_set_topic     = mqtt_topic + "/" + mqtt_fn + "/vane/set";
+      ha_wideVane_set_topic = mqtt_topic + "/" + mqtt_fn + "/wideVane/set";
+      ha_settings_topic     = mqtt_topic  + "/" + mqtt_fn + "/settings";
+      ha_state_topic        = mqtt_topic  + "/" + mqtt_fn + "/state";
+      ha_debug_topic        = mqtt_topic + "/" + mqtt_fn + "/debug";
+      ha_debug_set_topic    = mqtt_topic + "/" + mqtt_fn + "/debug/set";
+      ha_custom_packet      = mqtt_topic + "/" + mqtt_fn + "/custom/send";
+      ha_availability_topic = mqtt_topic + "/" + mqtt_fn + "/availability";
 
       if (others_haa) {
         ha_config_topic       = others_haa_topic + "/climate/" + mqtt_fn + "/config";
@@ -268,22 +269,22 @@ void saveUnit(String tempUnit, String supportMode, String loginPassword, String 
   const size_t capacity = JSON_OBJECT_SIZE(7) + 200;
   DynamicJsonDocument doc(capacity);
   // if temp unit is empty, we use default celcius
-  if (tempUnit == '\0') tempUnit = "cel";
+  if (tempUnit.isEmpty()) tempUnit = "cel";
   doc["unit_tempUnit"]   = tempUnit;
   // if minTemp is empty, we use default 16
-  if (minTemp == '\0') minTemp = 16;
+  if (minTemp.isEmpty()) minTemp = 16;
   doc["min_temp"]   = minTemp;
   // if maxTemp is empty, we use default 31
-  if (maxTemp == '\0') maxTemp = 31;
+  if (maxTemp.isEmpty()) maxTemp = 31;
   doc["max_temp"]   = maxTemp;
   // if tempStep is empty, we use default 1
-  if (tempStep == '\0') tempStep = 1;
+  if (tempStep.isEmpty()) tempStep = 1;
   doc["temp_step"] = tempStep;
   // if support mode is empty, we use default all mode
-  if (supportMode == '\0') supportMode = "all";
+  if (supportMode.isEmpty()) supportMode = "all";
   doc["support_mode"]   = supportMode;
   // if login password is empty, we use empty
-  if (loginPassword == '\0') loginPassword = "";
+  if (loginPassword.isEmpty()) loginPassword = "";
   doc["login_password"]   = loginPassword;
   // if unitAllowExternalUpdate is empty, we use default OFF
   if (unitAllowExternalUpdate == '\0') unitAllowExternalUpdate = "OFF";
@@ -900,7 +901,7 @@ void handleControl() {
   controlPage.replace("_TXT_F_DRY_", FPSTR(txt_f_dry));
   controlPage.replace("_TXT_F_COOL_", FPSTR(txt_f_cool));
   controlPage.replace("_TXT_F_FAN_", FPSTR(txt_f_fan));
-  controlPage.replace("_TXT_F_QUIET_", FPSTR(txt_f_quiet));
+//  controlPage.replace("_TXT_F_QUIET_", FPSTR(txt_f_quiet));
   controlPage.replace("_TXT_F_SPEED_", FPSTR(txt_f_speed));
   controlPage.replace("_TXT_F_SWING_", FPSTR(txt_f_swing));
   controlPage.replace("_TXT_F_POS_", FPSTR(txt_f_pos));
@@ -937,9 +938,9 @@ void handleControl() {
   if (strcmp(settings.fan, "AUTO") == 0) {
     controlPage.replace("_FAN_A_", "selected");
   }
-  else if (strcmp(settings.fan, "QUIET") == 0) {
-    controlPage.replace("_FAN_Q_", "selected");
-  }
+//  else if (strcmp(settings.fan, "QUIET") == 0) {
+//    controlPage.replace("_FAN_Q_", "selected");
+//  }
   else if (strcmp(settings.fan, "1") == 0) {
     controlPage.replace("_FAN_1_", "selected");
   }
@@ -1325,7 +1326,7 @@ String hpGetAction(boolean hpoperating, String hppower, String hpmode) {
     else if (hpmode == "heat")  result = "heating";
     else if (hpmode == "dry")   result = "drying";
   }
-  return result;
+
 }
 
 void hpStatusChanged(heatpumpStatus currentStatus) {
@@ -1356,6 +1357,7 @@ void hpStatusChanged(heatpumpStatus currentStatus) {
     lastTempSend = millis();
   }
 }
+} 
 
 void hpPacketDebug(byte* packet, unsigned int length, const char* packetDirection) {
   if (_debugMode) {
@@ -1558,6 +1560,9 @@ void haConfig() {
   haConfig["mode_stat_tpl"]                 = F("{{ value_json.mode if (value_json is defined and value_json.mode is defined and value_json.mode|length) else 'off' }}"); //Set default value for fix "Could not parse data for HA"
   haConfig["temp_cmd_t"]                    = ha_temp_set_topic;
   haConfig["temp_stat_t"]                   = ha_state_topic;
+  haConfig["avty_t"]                        = ha_availability_topic; // MQTT last will (status) messages topic 
+  haConfig["pl_not_avail"]                  = mqtt_payload_unavailable; // MQTT offline message payload
+  haConfig["pl_avail"]                      = mqtt_payload_available; // MQTT online message payload
   //Set default value for fix "Could not parse data for HA"
   String temp_stat_tpl_str                  = F("{% if (value_json is defined and value_json.temperature is defined) %}{% if (value_json.temperature|int > ");
   temp_stat_tpl_str                        += (String)convertCelsiusToLocalUnit(min_temp, useFahrenheit) + " and value_json.temperature|int < ";
@@ -1572,10 +1577,11 @@ void haConfig() {
   haConfig["max_temp"]                      = convertCelsiusToLocalUnit(max_temp, useFahrenheit);
   haConfig["temp_step"]                     = temp_step;
   haConfig["pow_cmd_t"]                     = ha_power_set_topic;
+  haConfig["temperature_unit"]              = useFahrenheit ? "F" : "C";                                    
 
   JsonArray haConfigFan_modes = haConfig.createNestedArray("fan_modes");
   haConfigFan_modes.add("AUTO");
-  haConfigFan_modes.add("QUIET");
+//  haConfigFan_modes.add("QUIET");
   haConfigFan_modes.add("1");
   haConfigFan_modes.add("2");
   haConfigFan_modes.add("3");
@@ -1620,7 +1626,7 @@ void mqttConnect() {
   int attempts = 0;
   while (!mqtt_client.connected()) {
     // Attempt to connect
-    mqtt_client.connect(mqtt_client_id.c_str(), mqtt_username.c_str(), mqtt_password.c_str());
+    mqtt_client.connect(mqtt_client_id.c_str(), mqtt_username.c_str(), mqtt_password.c_str(), ha_availability_topic.c_str(), 1, true, mqtt_payload_unavailable);
     // If state < 0 (MQTT_CONNECTED) => network problem we retry 5 times and then waiting for MQTT_RETRY_INTERVAL_MS and retry reapeatly
     if (mqtt_client.state() < MQTT_CONNECTED) {
       if (attempts == 5) {
@@ -1647,6 +1653,7 @@ void mqttConnect() {
       mqtt_client.subscribe(ha_wideVane_set_topic.c_str());
       mqtt_client.subscribe(ha_remote_temp_set_topic.c_str());
       mqtt_client.subscribe(ha_custom_packet.c_str());
+      mqtt_client.publish(ha_availability_topic.c_str(), mqtt_payload_available, true); //publish status as available
       if (others_haa) {
         haConfig();
       }
@@ -1794,7 +1801,6 @@ void loop() {
 
   server.handleClient();
   ArduinoOTA.handle();
-
   //reset board to attempt to connect to wifi again if in ap mode or wifi dropped out and time limit passed
   if (WiFi.getMode() == WIFI_STA and WiFi.status() == WL_CONNECTED) {
     wifi_timeout = millis() + WIFI_RETRY_INTERVAL_MS;
@@ -1830,6 +1836,8 @@ void loop() {
         mqtt_client.loop();
       }
     }
+             
+  }
   }
   else {
     dnsServer.processNextRequest();
